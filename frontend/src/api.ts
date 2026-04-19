@@ -8,9 +8,14 @@ import type {
 } from "./types";
 
 const configuredApiBase = (import.meta.env.VITE_API_BASE_URL ?? "").trim().replace(/\/+$/, "");
+const isLocalBrowser =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 const API_BASES = configuredApiBase
   ? [configuredApiBase]
-  : ["http://127.0.0.1:3001", "http://localhost:3001", ""];
+  : isLocalBrowser
+    ? ["http://127.0.0.1:3001", "http://localhost:3001", ""]
+    : [""];
 
 async function fetchWithTimeout(input: string, init?: RequestInit, timeoutMs = 15000) {
   const controller = new AbortController();
@@ -143,6 +148,14 @@ const fallbackPersonas: PersonaSummary = {
   ],
 };
 
+const fallbackBundleRuns: BundleRunSummary = {
+  totalRuns: 0,
+  lowConfidenceRuns: 0,
+  unmatchedRuns: 0,
+  matchLevelBreakdown: [],
+  recentRuns: [],
+};
+
 export async function getRecommendation(
   payload: RecommendationRequest
 ): Promise<RecommendationResult> {
@@ -172,7 +185,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 }
 
 export async function getBundleRunSummary(): Promise<BundleRunSummary> {
-  return await requestJson<BundleRunSummary>("/api/dashboard/bundle-runs");
+  try {
+    return await requestJson<BundleRunSummary>("/api/dashboard/bundle-runs");
+  } catch {
+    return fallbackBundleRuns;
+  }
 }
 
 export async function getPersonaSummary(): Promise<PersonaSummary> {
